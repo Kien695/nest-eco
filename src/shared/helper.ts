@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { randomInt } from 'crypto';
 
 export function isUniqueContraintError(
   error: unknown,
@@ -17,3 +18,7 @@ export function isUniqueNotFoundError(
     error.code === 'P2025'
   );
 }
+
+export const generateOTP = (): string => {
+  return randomInt(100000, 1000000).toString();
+};
