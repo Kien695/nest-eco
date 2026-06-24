@@ -7,11 +7,13 @@ import { HashingService } from 'src/shared/services/hasing.service';
 
 import { RolesService } from './roles.service';
 import { generateOTP, isUniqueContraintError } from 'src/shared/helper';
-import { registerBodyType, SendOTPBodyType } from './auth.model';
+import { loginBodyType, registerBodyType, SendOTPBodyType } from './auth.model';
 import { AuthRepository } from './auth.repon';
 import { SharedUserRepostory } from 'src/shared/repositories/shared-user.repo';
 import { TypeOfVerificationCode } from 'src/shared/constants/auth.constant';
 import { EmailService } from 'src/shared/services/email.services';
+import { TokenService } from 'src/shared/services/token.service';
+import { AccessTokenPayloadCreate } from 'src/shared/types/jwt.type';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +23,7 @@ export class AuthService {
     private readonly rolseService: RolesService,
     private readonly sharedUserRepo: SharedUserRepostory,
     private readonly emailService: EmailService,
+    private readonly tokenService: TokenService,
   ) {}
   async register(body: registerBodyType) {
     try {
@@ -104,5 +107,66 @@ export class AuthService {
     }
 
     return verificationCode;
+  }
+
+  async login(body: loginBodyType & { userAgent: string; ip: string }) {
+    const user = await this.authRepostory.findUniqueUserIncludeRole({
+      email: body.email,
+    });
+    if (!user) {
+      throw new UnprocessableEntityException([
+        {
+          message: 'Email đã tồn tại',
+          path: 'email',
+        },
+      ]);
+    }
+    const isPassMatch = await this.hashingService.compare(
+      body.password,
+      user.password,
+    );
+    if (!isPassMatch) {
+      throw new UnprocessableEntityException([
+        {
+          message: 'Mật khẩu không chính xác',
+          path: 'password',
+        },
+      ]);
+    }
+    const device = await this.authRepostory.createDevice({
+      userId: user.id,
+      userAgent: body.userAgent,
+      ip: body.ip,
+    });
+    const tokens = await this.generateToken({
+      userId: user.id,
+      deviceId: device.id,
+      roleId: user.roleId,
+      roleName: user.role.name,
+    });
+    console.log(tokens);
+    return tokens;
+  }
+  async generateToken(payload: AccessTokenPayloadCreate) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.tokenService.accessToken({
+        userId: payload.userId,
+        deviceId: payload.deviceId,
+        roleId: payload.roleId,
+        roleName: payload.roleName,
+      }),
+      this.tokenService.refreshToken({ userId: payload.userId }),
+    ]);
+
+    const decodeRefreshToken =
+      await this.tokenService.verifyRefreshToken(refreshToken);
+
+    await this.authRepostory.createRefreshToken({
+      token: refreshToken,
+      userId: payload.userId,
+      expiresAt: new Date(decodeRefreshToken.exp * 1000),
+      deviceId: payload.deviceId,
+    });
+    return { accessToken, refreshToken };
   }
 }
