@@ -7,7 +7,11 @@ import {
 import { HashingService } from 'src/shared/services/hasing.service';
 
 import { RolesService } from './roles.service';
-import { generateOTP, isUniqueContraintError } from 'src/shared/helper';
+import {
+  generateOTP,
+  isUniqueContraintError,
+  isUniqueNotFoundError,
+} from 'src/shared/helper';
 import {
   loginBodyType,
   refreshTokenBodyType,
@@ -218,6 +222,23 @@ export class AuthService {
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
+      }
+      throw new UnauthorizedException();
+    }
+  }
+  async logout(refreshToken: string) {
+    try {
+      await this.tokenService.verifyRefreshToken(refreshToken);
+      const deletedRefreshToken = await this.authRepostory.deleteRefreshToken({
+        token: refreshToken,
+      });
+      await this.authRepostory.updateDevice(deletedRefreshToken.deviceId, {
+        isActive: false,
+      });
+      return { message: 'Đăng xuất thành công!' };
+    } catch (error) {
+      if (isUniqueNotFoundError(error)) {
+        throw new UnauthorizedException('RefreshToken đã được sử dụng');
       }
       throw new UnauthorizedException();
     }

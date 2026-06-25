@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import {
   loginBodyDTO,
   loginResDTO,
+  logoutBodyDTO,
   refreshTokenBodyDTO,
   refreshTokenResDTO,
   registerBodyDTO,
@@ -11,6 +12,7 @@ import {
 } from './auth.dto';
 import { ZodSerializerDto } from 'nestjs-zod';
 import { UserAgent } from 'src/shared/decorators/user-agent.decorators';
+import { MessageResDTO } from 'src/shared/dtos/response.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -33,7 +35,6 @@ export class AuthController {
     @UserAgent() userAgent: string,
     @Ip() ip: string,
   ) {
-    console.log('VÀO CONTROLLER');
     return await this.authService.login({
       ...body,
       userAgent,
@@ -53,5 +54,10 @@ export class AuthController {
       userAgent,
       ip,
     });
+  }
+  @Post('logout')
+  @ZodSerializerDto(MessageResDTO)
+  logout(@Body() body: logoutBodyDTO) {
+    return this.authService.logout(body.refreshToken);
   }
 }

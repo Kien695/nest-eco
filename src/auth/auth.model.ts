@@ -86,7 +86,7 @@ export type refreshTokenType = z.infer<typeof RefreshTokenSchema>;
 export const refreshTokenResShema = LoginResSchema;
 export type refreshTokenResType = LoginResType;
 //logout
-export const logoutBodySchema = RefreshTokenSchema;
+export const logoutBodySchema = RefreshTokenBodySchema;
 export type logoutBodyType = refreshTokenBodyType;
 //device
 export const DeviceShema = z.object({
