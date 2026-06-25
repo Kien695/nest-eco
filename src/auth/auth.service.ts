@@ -116,7 +116,7 @@ export class AuthService {
       ]);
     }
 
-    return verificationCode;
+    return { message: 'Gửi mã OTP thành công' };
   }
 
   async login(body: loginBodyType & { userAgent: string; ip: string }) {
