@@ -3,6 +3,8 @@ import { AuthService } from './auth.service';
 import {
   loginBodyDTO,
   loginResDTO,
+  refreshTokenBodyDTO,
+  refreshTokenResDTO,
   registerBodyDTO,
   registerResDTO,
   sendOTPBodyDTO,
@@ -31,8 +33,23 @@ export class AuthController {
     @UserAgent() userAgent: string,
     @Ip() ip: string,
   ) {
+    console.log('VÀO CONTROLLER');
     return await this.authService.login({
       ...body,
+      userAgent,
+      ip,
+    });
+  }
+
+  @Post('refresh-token')
+  @ZodSerializerDto(refreshTokenResDTO)
+  refreshToken(
+    @Body() body: refreshTokenBodyDTO,
+    @UserAgent() userAgent: string,
+    @Ip() ip: string,
+  ) {
+    return this.authService.refreshToken({
+      refreshToken: body.refreshToken,
       userAgent,
       ip,
     });

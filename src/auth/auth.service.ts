@@ -1,13 +1,19 @@
 import {
-  ConflictException,
+  HttpException,
   Injectable,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { HashingService } from 'src/shared/services/hasing.service';
 
 import { RolesService } from './roles.service';
 import { generateOTP, isUniqueContraintError } from 'src/shared/helper';
-import { loginBodyType, registerBodyType, SendOTPBodyType } from './auth.model';
+import {
+  loginBodyType,
+  refreshTokenBodyType,
+  registerBodyType,
+  SendOTPBodyType,
+} from './auth.model';
 import { AuthRepository } from './auth.repon';
 import { SharedUserRepostory } from 'src/shared/repositories/shared-user.repo';
 import { TypeOfVerificationCode } from 'src/shared/constants/auth.constant';
@@ -144,7 +150,7 @@ export class AuthService {
       roleId: user.roleId,
       roleName: user.role.name,
     });
-    console.log(tokens);
+
     return tokens;
   }
   async generateToken(payload: AccessTokenPayloadCreate) {
@@ -168,5 +174,52 @@ export class AuthService {
       deviceId: payload.deviceId,
     });
     return { accessToken, refreshToken };
+  }
+  async refreshToken({
+    refreshToken,
+    userAgent,
+    ip,
+  }: refreshTokenBodyType & { userAgent: string; ip: string }) {
+    try {
+      const { userId } =
+        await this.tokenService.verifyRefreshToken(refreshToken);
+
+      const refreshTokenInDb =
+        await this.authRepostory.findUniqueRefreshTokenIcludeUserRole({
+          token: refreshToken,
+        });
+      if (!refreshTokenInDb) {
+        throw new UnauthorizedException('Refresh-Token đã được sử dụng!');
+      }
+
+      const {
+        deviceId,
+        user: { roleId, name: roleName },
+      } = refreshTokenInDb;
+      const $updateDevice = this.authRepostory.updateDevice(deviceId, {
+        userAgent,
+        ip,
+      });
+      const $deleteFreshToken = await this.authRepostory.deleteRefreshToken({
+        token: refreshToken,
+      });
+      const $tokens = this.generateToken({
+        userId,
+        roleId,
+        roleName,
+        deviceId,
+      });
+      const [, , tokens] = await Promise.all([
+        $updateDevice,
+        $deleteFreshToken,
+        $tokens,
+      ]);
+      return tokens;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new UnauthorizedException();
+    }
   }
 }
