@@ -20,7 +20,10 @@ import {
 } from './auth.model';
 import { AuthRepository } from './auth.repon';
 import { SharedUserRepostory } from 'src/shared/repositories/shared-user.repo';
-import { TypeOfVerificationCode } from 'src/shared/constants/auth.constant';
+import {
+  AuthProvider,
+  TypeOfVerificationCode,
+} from 'src/shared/constants/auth.constant';
 import { EmailService } from 'src/shared/services/email.services';
 import { TokenService } from 'src/shared/services/token.service';
 import { AccessTokenPayloadCreate } from 'src/shared/types/jwt.type';
@@ -127,6 +130,15 @@ export class AuthService {
       throw new UnprocessableEntityException([
         {
           message: 'Email đã tồn tại',
+          path: 'email',
+        },
+      ]);
+    }
+    if (!user.password) {
+      throw new UnprocessableEntityException([
+        {
+          message:
+            'Tài khoản này đăng nhập bằng Google, vui lòng dùng Google Login',
           path: 'email',
         },
       ]);
@@ -242,5 +254,45 @@ export class AuthService {
       }
       throw new UnauthorizedException();
     }
+  }
+
+  async googleLogin(googleUser: { user: any; userAgent: string; ip: string }) {
+    // 1. Tìm xem user đã tồn tại chưa
+    let user = await this.authRepostory.findUniqueUserIncludeRole({
+      email: googleUser.user.email,
+    });
+
+    const clientRoleId = await this.rolseService.getClientRoleId();
+
+    // 2. Nếu CHƯA có user, tiến hành TẠO MỚI (Đăng ký tự động)
+    if (!user) {
+      user = await this.authRepostory.createUserOauth({
+        email: googleUser.user.email,
+        name: googleUser.user.name,
+        avatar: googleUser.user.avatar ?? googleUser.user.picture,
+        providerId: googleUser.user.providerId,
+        roleId: clientRoleId,
+        authProvider: AuthProvider.GOOGLE,
+      });
+
+      // Đảm bảo sau khi tạo, biến user có đầy đủ cấu trúc role để chạy tiếp bên dưới
+      // (Hoặc bạn có thể fetch lại user kèm role nếu hàm tạo không trả về role name)
+    }
+
+    // 3. DÙ LÀ USER CŨ HAY USER MỚI TẠO, đều đi qua đây để tạo Token đăng nhập:
+    const device = await this.authRepostory.createDevice({
+      userId: user.id, // Chắc chắn lúc này user.id đã tồn tại và không bị null nữa!
+      userAgent: googleUser.userAgent,
+      ip: googleUser.ip,
+    });
+
+    const tokens = await this.generateToken({
+      userId: user.id,
+      deviceId: device.id,
+      roleId: user.roleId || clientRoleId,
+      roleName: user.role?.name || 'Client',
+    });
+
+    return tokens;
   }
 }

@@ -1,17 +1,17 @@
 import {
+  AuthProvider,
   TypeOfVerificationCode,
   UserStatus,
 } from 'src/shared/constants/auth.constant';
 import { UserSchema } from 'src/shared/models/shared-user.model';
 import z from 'zod';
 
-export const registerBodySchema = UserSchema.pick({
-  email: true,
-  password: true,
-  name: true,
-  phoneNumber: true,
-})
-  .extend({
+export const registerBodySchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(6).max(100),
+    name: z.string().min(3).max(100),
+    phoneNumber: z.string().length(10),
     confirmPassword: z.string().min(6).max(100),
     code: z.string().length(6),
   })
@@ -53,10 +53,12 @@ export const SendOTPBodySchema = verificationCode
   .strict();
 export type SendOTPBodyType = z.infer<typeof SendOTPBodySchema>;
 
-export const LoginBodySchema = UserSchema.pick({
-  email: true,
-  password: true,
-}).strict();
+export const LoginBodySchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(6).max(100),
+  })
+  .strict();
 
 export type loginBodyType = z.infer<typeof LoginBodySchema>;
 
@@ -114,3 +116,14 @@ export const roleSchema = z.object({
   updatedAt: z.date(),
 });
 export type roleType = z.infer<typeof roleSchema>;
+
+export const loginOauthBodySchema = UserSchema.pick({
+  email: true,
+  name: true,
+  providerId: true,
+  roleId: true,
+  avatar: true,
+}).extend({
+  authProvider: z.nativeEnum(AuthProvider),
+});
+export type loginOauthBodyType = z.infer<typeof loginOauthBodySchema>;

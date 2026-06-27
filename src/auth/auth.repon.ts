@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/shared/services/prisma.service';
 import {
   deviceType,
+  loginOauthBodyType,
   refreshTokenType,
   registerBodyType,
   roleType,
@@ -9,6 +10,7 @@ import {
 } from './auth.model';
 import { UserType } from 'src/shared/models/shared-user.model';
 import { TypeOfVerificationCodeType } from 'src/shared/constants/auth.constant';
+import { AuthProvider } from '@prisma/client';
 
 @Injectable()
 export class AuthRepository {
@@ -23,6 +25,20 @@ export class AuthRepository {
         password: true,
         totpSecret: true,
       },
+    });
+  }
+
+  async createUserOauth(user: loginOauthBodyType) {
+    return this.prismaService.user.create({
+      data: {
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        providerId: user.providerId,
+        roleId: user.roleId,
+        authProvider: user.authProvider as AuthProvider,
+      },
+      include: { role: true },
     });
   }
   async createVertificationCode(

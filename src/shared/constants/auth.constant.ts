@@ -17,7 +17,10 @@ export const UserStatus = {
   INACTIVE: 'INACTIVE',
   BLOCKED: 'BLOCKED',
 } as const;
-
+export const AuthProvider = {
+  LOCAL: 'LOCAL',
+  GOOGLE: 'GOOGLE',
+};
 export const TypeOfVerificationCode = {
   REGISTER: 'REGISTER',
   FORGOT_PASSWORD: 'FORGOT_PASSWORD',
