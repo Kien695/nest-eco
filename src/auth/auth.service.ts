@@ -13,6 +13,7 @@ import {
   isUniqueNotFoundError,
 } from 'src/shared/helper';
 import {
+  ForgotPasswordBodyType,
   loginBodyType,
   refreshTokenBodyType,
   registerBodyType,
@@ -27,6 +28,18 @@ import {
 import { EmailService } from 'src/shared/services/email.services';
 import { TokenService } from 'src/shared/services/token.service';
 import { AccessTokenPayloadCreate } from 'src/shared/types/jwt.type';
+import {
+  AuthErrorMessage,
+  EmailAlreadyExistsException,
+  EmailNotFoundException,
+  GoogleAccountOnlyException,
+  InvalidOTPException,
+  InvalidPasswordException,
+  OTPExpiredException,
+  RefreshTokenAlreadyUsedException,
+  SendOTPFailedException,
+} from './auth.error';
+import { UseZodGuard } from 'node_modules/nestjs-zod/dist/index.mjs';
 
 @Injectable()
 export class AuthService {
@@ -47,39 +60,32 @@ export class AuthService {
           type: TypeOfVerificationCode.REGISTER,
         });
       if (!verificationCode) {
-        throw new UnprocessableEntityException([
-          {
-            message: 'Mã OTP không hợp lệ',
-            path: 'code',
-          },
-        ]);
+        throw InvalidOTPException;
       }
       if (verificationCode.expiresAt < new Date()) {
-        throw new UnprocessableEntityException([
-          {
-            message: 'Mã OTP đã hết hạn',
-            path: 'code',
-          },
-        ]);
+        throw OTPExpiredException;
       }
       const clientRoleId = await this.rolseService.getClientRoleId();
       const hashPass = await this.hashingService.hash(body.password);
-      return await this.authRepostory.createUser({
-        email: body.email,
-        name: body.name,
-        phoneNumber: body.phoneNumber,
-        password: hashPass,
-        roleId: clientRoleId,
-      });
+      const [user] = await Promise.all([
+        await this.authRepostory.createUser({
+          email: body.email,
+          name: body.name,
+          phoneNumber: body.phoneNumber,
+          password: hashPass,
+          roleId: clientRoleId,
+        }),
+        this.authRepostory.deleteVerificationCode({
+          email: body.email,
+          code: body.code,
+          type: TypeOfVerificationCode.REGISTER,
+        }),
+      ]);
+      return user;
     } catch (error) {
       if (isUniqueContraintError(error)) {
         // throw new ConflictException('Email đã tồn tại');
-        throw new UnprocessableEntityException([
-          {
-            message: 'Email đã tồn tại',
-            path: 'email',
-          },
-        ]);
+        throw EmailAlreadyExistsException;
       }
       throw error;
     }
@@ -88,17 +94,15 @@ export class AuthService {
     const user = await this.sharedUserRepo.findUnique({
       email: body.email,
     });
-    if (user) {
-      throw new UnprocessableEntityException([
-        {
-          message: 'Email đã tồn tại',
-          path: 'email',
-        },
-      ]);
+    if (body.type === TypeOfVerificationCode.REGISTER && user) {
+      throw EmailAlreadyExistsException;
+    }
+    if (body.type === TypeOfVerificationCode.FORGOT_PASSWORD && !user) {
+      throw EmailNotFoundException;
     }
     const code = generateOTP();
 
-    const verificationCode = await this.authRepostory.createVertificationCode({
+    await this.authRepostory.createVertificationCode({
       email: body.email,
       code,
       type: body.type,
@@ -111,15 +115,10 @@ export class AuthService {
     });
     if (error) {
       console.log(error);
-      throw new UnprocessableEntityException([
-        {
-          message: 'Gửi mã OTP thất bại!',
-          path: 'code',
-        },
-      ]);
+      throw SendOTPFailedException;
     }
 
-    return { message: 'Gửi mã OTP thành công' };
+    return { message: AuthErrorMessage.SendOTPSuccess };
   }
 
   async login(body: loginBodyType & { userAgent: string; ip: string }) {
@@ -127,33 +126,17 @@ export class AuthService {
       email: body.email,
     });
     if (!user) {
-      throw new UnprocessableEntityException([
-        {
-          message: 'Email đã tồn tại',
-          path: 'email',
-        },
-      ]);
+      throw EmailNotFoundException;
     }
     if (!user.password) {
-      throw new UnprocessableEntityException([
-        {
-          message:
-            'Tài khoản này đăng nhập bằng Google, vui lòng dùng Google Login',
-          path: 'email',
-        },
-      ]);
+      throw GoogleAccountOnlyException;
     }
     const isPassMatch = await this.hashingService.compare(
       body.password,
       user.password,
     );
     if (!isPassMatch) {
-      throw new UnprocessableEntityException([
-        {
-          message: 'Mật khẩu không chính xác',
-          path: 'password',
-        },
-      ]);
+      throw InvalidPasswordException;
     }
     const device = await this.authRepostory.createDevice({
       userId: user.id,
@@ -205,7 +188,7 @@ export class AuthService {
           token: refreshToken,
         });
       if (!refreshTokenInDb) {
-        throw new UnauthorizedException('Refresh-Token đã được sử dụng!');
+        throw RefreshTokenAlreadyUsedException;
       }
 
       const {
@@ -247,10 +230,10 @@ export class AuthService {
       await this.authRepostory.updateDevice(deletedRefreshToken.deviceId, {
         isActive: false,
       });
-      return { message: 'Đăng xuất thành công!' };
+      return { message: AuthErrorMessage.LogoutSuccess };
     } catch (error) {
       if (isUniqueNotFoundError(error)) {
-        throw new UnauthorizedException('RefreshToken đã được sử dụng');
+        throw RefreshTokenAlreadyUsedException;
       }
       throw new UnauthorizedException();
     }
@@ -294,5 +277,37 @@ export class AuthService {
     });
 
     return tokens;
+  }
+
+  async forgotPassword(body: ForgotPasswordBodyType) {
+    const { email, code, newPassword } = body;
+    const user = await this.sharedUserRepo.findUnique({ email });
+    if (!user) {
+      throw EmailNotFoundException;
+    }
+    const verificationCode =
+      await this.authRepostory.findUniqueVerificationCode({
+        email: body.email,
+        code: body.code,
+        type: TypeOfVerificationCode.FORGOT_PASSWORD,
+      });
+    if (!verificationCode) {
+      throw InvalidOTPException;
+    }
+    if (verificationCode.expiresAt < new Date()) {
+      throw OTPExpiredException;
+    }
+
+    const hashPass = await this.hashingService.hash(newPassword);
+    await Promise.all([
+      this.authRepostory.updateUser({ id: user.id }, { password: hashPass }),
+      this.authRepostory.deleteVerificationCode({
+        email: body.email,
+        code: body.code,
+        type: TypeOfVerificationCode.FORGOT_PASSWORD,
+      }),
+    ]);
+
+    return { message: 'Đổi mật khẩu thành công!' };
   }
 }

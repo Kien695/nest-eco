@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
+  forgotPasswordBodyDTO,
   loginBodyDTO,
   loginResDTO,
   logoutBodyDTO,
@@ -92,5 +93,12 @@ export class AuthController {
     @Ip() ip: string,
   ) {
     return this.authService.googleLogin({ user: req.user, userAgent, ip });
+  }
+
+  @Post('forgot-password')
+  @isPublic()
+  @ZodSerializerDto(MessageResDTO)
+  forgotPassword(@Body() body: forgotPasswordBodyDTO) {
+    return this.authService.forgotPassword(body);
   }
 }

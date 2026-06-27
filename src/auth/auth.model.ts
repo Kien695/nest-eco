@@ -127,3 +127,22 @@ export const loginOauthBodySchema = UserSchema.pick({
   authProvider: z.nativeEnum(AuthProvider),
 });
 export type loginOauthBodyType = z.infer<typeof loginOauthBodySchema>;
+
+export const ForgotPasswordBodySchema = z
+  .object({
+    email: z.string().email(),
+    code: z.string().length(6),
+    newPassword: z.string().min(8).max(100),
+    confirmNewPassword: z.string().min(8).max(100),
+  })
+  .strict()
+  .superRefine(({ confirmNewPassword, newPassword }, cxt) => {
+    if (confirmNewPassword !== newPassword) {
+      cxt.addIssue({
+        code: 'custom',
+        message: 'Mật khẩu mới và xác nhận mật khẩu phải giống nhau!',
+        path: ['confirmNewPassword'],
+      });
+    }
+  });
+export type ForgotPasswordBodyType = z.infer<typeof ForgotPasswordBodySchema>;

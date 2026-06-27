@@ -10,7 +10,7 @@ import {
 } from './auth.model';
 import { UserType } from 'src/shared/models/shared-user.model';
 import { TypeOfVerificationCodeType } from 'src/shared/constants/auth.constant';
-import { AuthProvider } from '@prisma/client';
+import { AuthProvider, Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class AuthRepository {
@@ -123,6 +123,29 @@ export class AuthRepository {
   }): Promise<refreshTokenType> {
     return this.prismaService.refreshToken.delete({
       where: uniqueObject,
+    });
+  }
+  updateUser(
+    where: Prisma.UserWhereUniqueInput,
+    data: Prisma.UserUncheckedUpdateInput,
+  ): Promise<User> {
+    return this.prismaService.user.update({
+      where,
+      data,
+    });
+  }
+  async deleteVerificationCode(
+    uniqueValue:
+      | { email: string }
+      | { id: number }
+      | {
+          email: string;
+          code: string;
+          type: TypeOfVerificationCodeType;
+        },
+  ): Promise<verificationCodeType | null> {
+    return this.prismaService.verificationCode.delete({
+      where: uniqueValue,
     });
   }
 }
