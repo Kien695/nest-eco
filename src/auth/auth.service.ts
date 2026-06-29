@@ -13,6 +13,7 @@ import {
   isUniqueNotFoundError,
 } from 'src/shared/helper';
 import {
+  DisableTwoFactorBodyType,
   ForgotPasswordBodyType,
   loginBodyType,
   refreshTokenBodyType,
@@ -35,11 +36,16 @@ import {
   GoogleAccountOnlyException,
   InvalidOTPException,
   InvalidPasswordException,
+  InvalidTOTPAndCodeException,
+  InvalidTOTPException,
   OTPExpiredException,
   RefreshTokenAlreadyUsedException,
   SendOTPFailedException,
+  TOTPAlreadyEnableException,
+  TOTPNotEnableEception,
 } from './auth.error';
 import { UseZodGuard } from 'node_modules/nestjs-zod/dist/index.mjs';
+import { TwoFactorAuthService } from 'src/shared/services/2fa.services';
 
 @Injectable()
 export class AuthService {
@@ -50,14 +56,17 @@ export class AuthService {
     private readonly sharedUserRepo: SharedUserRepostory,
     private readonly emailService: EmailService,
     private readonly tokenService: TokenService,
+    private readonly twoFactorService: TwoFactorAuthService,
   ) {}
   async register(body: registerBodyType) {
     try {
       const verificationCode =
         await this.authRepostory.findUniqueVerificationCode({
-          email: body.email,
-          code: body.code,
-          type: TypeOfVerificationCode.REGISTER,
+          email_code_type: {
+            email: body.email,
+            code: body.code,
+            type: TypeOfVerificationCode.REGISTER,
+          },
         });
       if (!verificationCode) {
         throw InvalidOTPException;
@@ -76,9 +85,11 @@ export class AuthService {
           roleId: clientRoleId,
         }),
         this.authRepostory.deleteVerificationCode({
-          email: body.email,
-          code: body.code,
-          type: TypeOfVerificationCode.REGISTER,
+          email_code_type: {
+            email: body.email,
+            code: body.code,
+            type: TypeOfVerificationCode.REGISTER,
+          },
         }),
       ]);
       return user;
@@ -122,6 +133,7 @@ export class AuthService {
   }
 
   async login(body: loginBodyType & { userAgent: string; ip: string }) {
+    //lay thong tin, ktra thong tin
     const user = await this.authRepostory.findUniqueUserIncludeRole({
       email: body.email,
     });
@@ -138,11 +150,44 @@ export class AuthService {
     if (!isPassMatch) {
       throw InvalidPasswordException;
     }
+    // Neu user da bat ma 2fa thi ktra ma 2fa code hoac otp code(email)
+    if (user.totpSecret) {
+      if (!body.totpCode && !body.code) {
+        throw InvalidTOTPAndCodeException;
+      }
+      if (body.totpCode) {
+        const isValid = this.twoFactorService.verifyTOTP({
+          email: user.email,
+          secret: user.totpSecret,
+          token: body.totpCode,
+        });
+        if (!isValid) {
+          throw InvalidTOTPException;
+        } else if (body.code) {
+          const verificationCode =
+            await this.authRepostory.findUniqueVerificationCode({
+              email_code_type: {
+                email: body.email,
+                code: body.code,
+                type: TypeOfVerificationCode.LOGIN,
+              },
+            });
+          if (!verificationCode) {
+            throw InvalidOTPException;
+          }
+          if (verificationCode.expiresAt < new Date()) {
+            throw OTPExpiredException;
+          }
+        }
+      }
+    }
+    //tao device
     const device = await this.authRepostory.createDevice({
       userId: user.id,
       userAgent: body.userAgent,
       ip: body.ip,
     });
+    // tao tokens
     const tokens = await this.generateToken({
       userId: user.id,
       deviceId: device.id,
@@ -287,9 +332,11 @@ export class AuthService {
     }
     const verificationCode =
       await this.authRepostory.findUniqueVerificationCode({
-        email: body.email,
-        code: body.code,
-        type: TypeOfVerificationCode.FORGOT_PASSWORD,
+        email_code_type: {
+          email: body.email,
+          code: body.code,
+          type: TypeOfVerificationCode.FORGOT_PASSWORD,
+        },
       });
     if (!verificationCode) {
       throw InvalidOTPException;
@@ -302,12 +349,76 @@ export class AuthService {
     await Promise.all([
       this.authRepostory.updateUser({ id: user.id }, { password: hashPass }),
       this.authRepostory.deleteVerificationCode({
-        email: body.email,
-        code: body.code,
-        type: TypeOfVerificationCode.FORGOT_PASSWORD,
+        email_code_type: {
+          email: body.email,
+          code: body.code,
+          type: TypeOfVerificationCode.FORGOT_PASSWORD,
+        },
       }),
     ]);
 
     return { message: 'Đổi mật khẩu thành công!' };
+  }
+
+  async setupTwoFactorAuth(userId: number) {
+    //lay thong tin, ktra ton tai, ktra da bat f2a chua
+    const user = await this.sharedUserRepo.findUnique({ id: userId });
+    if (!user) {
+      throw EmailNotFoundException;
+    }
+    if (user.totpSecret) {
+      throw TOTPAlreadyEnableException;
+    }
+    //tao secret va uri
+    const { secret, uri } = this.twoFactorService.generateTOTPSecret(
+      user.email,
+    );
+    // update secret vao user trong database
+    await this.authRepostory.updateUser({ id: userId }, { totpSecret: secret });
+    //tra ve secret va uri
+    return { secret, uri };
+  }
+
+  async disableTwoFactorAuth(
+    data: DisableTwoFactorBodyType & { userId: number },
+  ) {
+    const { userId, totpCode, code } = data;
+    const user = await this.sharedUserRepo.findUnique({ id: userId });
+    if (!user) {
+      throw EmailNotFoundException;
+    }
+    if (!user.totpSecret) {
+      throw TOTPNotEnableEception;
+    }
+
+    if (totpCode) {
+      const isValid = this.twoFactorService.verifyTOTP({
+        email: user.email,
+        secret: user.totpSecret,
+        token: totpCode,
+      });
+      if (!isValid) {
+        throw InvalidTOTPException;
+      }
+    } else if (code) {
+      const verificationCode =
+        await this.authRepostory.findUniqueVerificationCode({
+          email_code_type: {
+            email: user.email,
+            code: code,
+            type: TypeOfVerificationCode.DISABLE_2FA,
+          },
+        });
+      if (!verificationCode) {
+        throw InvalidOTPException;
+      }
+      if (verificationCode.expiresAt < new Date()) {
+        throw OTPExpiredException;
+      }
+    }
+    await this.authRepostory.updateUser({ id: userId }, { totpSecret: null });
+    return {
+      message: 'Tắt F2A thành công!',
+    };
   }
 }

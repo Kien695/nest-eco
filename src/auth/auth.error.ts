@@ -15,6 +15,10 @@ export const AuthErrorMessage = {
   UnauthorizedAccess: 'Error.UnauthorizedAccess',
   LogoutSuccess: 'Success.LogoutSuccess',
   SendOTPSuccess: 'Success.SendOTPSuccess',
+  TOTPAlreadyEnable: 'Error.TOTPAlreadyEnable',
+  TOTPNotEnableEception: 'Error.TOTPNotEnable',
+  InvalidTOTPAndCode: 'Error.InvalidTOTPAndCode',
+  InvalidTOTPException: 'Error.InvalidTOTPException',
 } as const;
 
 export const InvalidOTPException = new UnprocessableEntityException([
@@ -73,3 +77,32 @@ export const RefreshTokenAlreadyUsedException = new UnauthorizedException(
 export const UnauthorizedAccessException = new UnauthorizedException(
   AuthErrorMessage.UnauthorizedAccess,
 );
+
+export const TOTPAlreadyEnableException = new UnprocessableEntityException([
+  {
+    message: AuthErrorMessage.TOTPAlreadyEnable,
+    path: 'totpCode',
+  },
+]);
+export const TOTPNotEnableEception = new UnprocessableEntityException([
+  {
+    message: AuthErrorMessage.TOTPNotEnableEception,
+    path: 'totpCode',
+  },
+]);
+export const InvalidTOTPAndCodeException = new UnprocessableEntityException([
+  {
+    message: AuthErrorMessage.InvalidTOTPAndCode,
+    path: 'totpCode',
+  },
+  {
+    message: AuthErrorMessage.InvalidTOTPAndCode,
+    path: 'code',
+  },
+]);
+export const InvalidTOTPException = new UnprocessableEntityException([
+  {
+    message: AuthErrorMessage.InvalidTOTPException,
+    path: 'totpCode',
+  },
+]);

@@ -39,6 +39,8 @@ export const verificationCode = z.object({
   type: z.enum([
     TypeOfVerificationCode.REGISTER,
     TypeOfVerificationCode.FORGOT_PASSWORD,
+    TypeOfVerificationCode.LOGIN,
+    TypeOfVerificationCode.DISABLE_2FA,
   ]),
   expiresAt: z.date(),
   createdAt: z.date(),
@@ -58,7 +60,27 @@ export const LoginBodySchema = z
     email: z.string().email(),
     password: z.string().min(6).max(100),
   })
-  .strict();
+  .extend({
+    totpCode: z.string().length(6).optional(), //f2a code
+    code: z.string().length(6).optional(), //email otp code
+  })
+  .strict()
+  .superRefine(({ totpCode, code }, ctx) => {
+    if ((totpCode !== undefined) === (code !== undefined)) {
+      (ctx.addIssue({
+        path: ['totpCode'],
+        message:
+          'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+        code: 'custom',
+      }),
+        ctx.addIssue({
+          path: ['code'],
+          message:
+            'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+          code: 'custom',
+        }));
+    }
+  });
 
 export type loginBodyType = z.infer<typeof LoginBodySchema>;
 
@@ -146,3 +168,35 @@ export const ForgotPasswordBodySchema = z
     }
   });
 export type ForgotPasswordBodyType = z.infer<typeof ForgotPasswordBodySchema>;
+
+export const TwoFactorSetupResSchema = z.object({
+  secret: z.string(),
+  uri: z.string(),
+});
+
+export const DisableTwoFactorBodySchema = z
+  .object({
+    totpCode: z.string().length(6).optional(), //f2a code
+    code: z.string().length(6).optional(), //email otp code
+  })
+  .strict()
+  .superRefine(({ totpCode, code }, ctx) => {
+    if ((totpCode !== undefined) === (code !== undefined)) {
+      (ctx.addIssue({
+        path: ['totpCode'],
+        message:
+          'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+        code: 'custom',
+      }),
+        ctx.addIssue({
+          path: ['code'],
+          message:
+            'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+          code: 'custom',
+        }));
+    }
+  });
+export type DisableTwoFactorBodyType = z.infer<
+  typeof DisableTwoFactorBodySchema
+>;
+export type TwoFactorSetupTypeSchema = z.infer<typeof TwoFactorSetupResSchema>;
