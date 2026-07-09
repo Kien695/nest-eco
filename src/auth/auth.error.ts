@@ -19,6 +19,8 @@ export const AuthErrorMessage = {
   TOTPNotEnableEception: 'Error.TOTPNotEnable',
   InvalidTOTPAndCode: 'Error.InvalidTOTPAndCode',
   InvalidTOTPException: 'Error.InvalidTOTPException',
+  PasswordNotMatch: 'Error.PasswordNotMatch',
+  AuthOTPOrCode: 'Error.AuthOTPOrCode',
 } as const;
 
 export const InvalidOTPException = new UnprocessableEntityException([

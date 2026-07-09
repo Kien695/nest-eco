@@ -5,21 +5,22 @@ import {
 } from 'src/shared/constants/auth.constant';
 import { UserSchema } from 'src/shared/models/shared-user.model';
 import z from 'zod';
+import { AuthErrorMessage } from './auth.error';
 
 export const registerBodySchema = z
   .object({
     email: z.string().email(),
-    password: z.string().min(6).max(100),
+    password: z.string().min(8).max(100),
     name: z.string().min(3).max(100),
     phoneNumber: z.string().length(10),
-    confirmPassword: z.string().min(6).max(100),
+    confirmPassword: z.string().min(8).max(100),
     code: z.string().length(6),
   })
   .superRefine(({ confirmPassword, password }, ctx) => {
     if (confirmPassword !== password) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Mật khẩu không trùng khớp',
+        message: AuthErrorMessage.PasswordNotMatch,
         path: ['confirmPassword'],
       });
     }
@@ -61,7 +62,7 @@ export const LoginBodySchema = z
     password: z.string().min(6).max(100),
   })
   .extend({
-    totpCode: z.string().length(6).optional(), //f2a code
+    totpCode: z.string().min(6).optional(), //f2a code
     code: z.string().length(6).optional(), //email otp code
   })
   .strict()
@@ -69,14 +70,14 @@ export const LoginBodySchema = z
     if ((totpCode !== undefined) === (code !== undefined)) {
       (ctx.addIssue({
         path: ['totpCode'],
-        message:
-          'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+        message: AuthErrorMessage.AuthOTPOrCode,
+        //'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
         code: 'custom',
       }),
         ctx.addIssue({
           path: ['code'],
-          message:
-            'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+          message: AuthErrorMessage.AuthOTPOrCode,
+          // 'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
           code: 'custom',
         }));
     }
@@ -162,7 +163,7 @@ export const ForgotPasswordBodySchema = z
     if (confirmNewPassword !== newPassword) {
       cxt.addIssue({
         code: 'custom',
-        message: 'Mật khẩu mới và xác nhận mật khẩu phải giống nhau!',
+        message: AuthErrorMessage.PasswordNotMatch,
         path: ['confirmNewPassword'],
       });
     }
@@ -184,14 +185,14 @@ export const DisableTwoFactorBodySchema = z
     if ((totpCode !== undefined) === (code !== undefined)) {
       (ctx.addIssue({
         path: ['totpCode'],
-        message:
-          'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+        message: AuthErrorMessage.AuthOTPOrCode,
+        //'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
         code: 'custom',
       }),
         ctx.addIssue({
           path: ['code'],
-          message:
-            'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
+          message: AuthErrorMessage.AuthOTPOrCode,
+          //'Bạn phải cung cấp mã xác thực 2FA hoặc OTP. Không được cung cấp cả 2',
           code: 'custom',
         }));
     }

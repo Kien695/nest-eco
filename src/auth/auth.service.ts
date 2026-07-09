@@ -77,7 +77,7 @@ export class AuthService {
       const clientRoleId = await this.rolseService.getClientRoleId();
       const hashPass = await this.hashingService.hash(body.password);
       const [user] = await Promise.all([
-        await this.authRepostory.createUser({
+        this.authRepostory.createUser({
           email: body.email,
           name: body.name,
           phoneNumber: body.phoneNumber,
@@ -133,7 +133,7 @@ export class AuthService {
   }
 
   async login(body: loginBodyType & { userAgent: string; ip: string }) {
-    //lay thong tin, ktra thong tin
+    // 1. Lấy thông tin và kiểm tra người dùng
     const user = await this.authRepostory.findUniqueUserIncludeRole({
       email: body.email,
     });
@@ -143,6 +143,8 @@ export class AuthService {
     if (!user.password) {
       throw GoogleAccountOnlyException;
     }
+
+    // 2. Kiểm tra mật khẩu
     const isPassMatch = await this.hashingService.compare(
       body.password,
       user.password,
@@ -150,44 +152,56 @@ export class AuthService {
     if (!isPassMatch) {
       throw InvalidPasswordException;
     }
-    // Neu user da bat ma 2fa thi ktra ma 2fa code hoac otp code(email)
+
+    // 3. Xử lý logic 2FA (Nếu user đã bật)
     if (user.totpSecret) {
+      // Trường hợp 1: Không gửi bất kỳ mã xác thực nào
       if (!body.totpCode && !body.code) {
-        throw InvalidTOTPAndCodeException;
+        throw InvalidTOTPAndCodeException; // Hoặc yêu cầu bước nhập 2FA
       }
+
+      // Trường hợp 2: Xác thực bằng ứng dụng (TOTP)
       if (body.totpCode) {
-        const isValid = this.twoFactorService.verifyTOTP({
+        const isValidTotp = this.twoFactorService.verifyTOTP({
           email: user.email,
           secret: user.totpSecret,
           token: body.totpCode,
         });
-        if (!isValid) {
+        if (!isValidTotp) {
           throw InvalidTOTPException;
-        } else if (body.code) {
-          const verificationCode =
-            await this.authRepostory.findUniqueVerificationCode({
-              email_code_type: {
-                email: body.email,
-                code: body.code,
-                type: TypeOfVerificationCode.LOGIN,
-              },
-            });
-          if (!verificationCode) {
-            throw InvalidOTPException;
-          }
-          if (verificationCode.expiresAt < new Date()) {
-            throw OTPExpiredException;
-          }
         }
       }
+      // Trường hợp 3: Xác thực bằng mã gửi qua Email (OTP)
+      else if (body.code) {
+        const verificationCode =
+          await this.authRepostory.findUniqueVerificationCode({
+            email_code_type: {
+              email: body.email,
+              code: body.code,
+              type: TypeOfVerificationCode.LOGIN,
+            },
+          });
+
+        if (!verificationCode) {
+          throw InvalidOTPException;
+        }
+        if (verificationCode.expiresAt < new Date()) {
+          throw OTPExpiredException;
+        }
+
+        // (Tùy chọn) Nên xóa mã OTP này sau khi dùng xong để tránh sử dụng lại
+        // await this.authRepostory.deleteVerificationCode(verificationCode.id);
+      }
     }
-    //tao device
+
+    // 4. Tạo thiết bị lưu vết
     const device = await this.authRepostory.createDevice({
       userId: user.id,
       userAgent: body.userAgent,
       ip: body.ip,
     });
-    // tao tokens
+
+    // 5. Tạo tokens và hoàn tất
     const tokens = await this.generateToken({
       userId: user.id,
       deviceId: device.id,

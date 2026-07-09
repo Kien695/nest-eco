@@ -5,9 +5,10 @@ import { SharedModule } from './shared/shared.module';
 
 import { AuthModule } from './auth/auth.module';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
+import { LanguagesModule } from './languages/languages.module';
 
 @Module({
-  imports: [SharedModule, AuthModule],
+  imports: [SharedModule, AuthModule, LanguagesModule],
   controllers: [AppController],
   providers: [
     AppService,
