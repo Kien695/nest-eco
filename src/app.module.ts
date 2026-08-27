@@ -7,9 +7,19 @@ import { AuthModule } from './auth/auth.module';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { LanguagesModule } from './languages/languages.module';
 
+import { PermissionsModule } from './permissions/permissions.module';
+import { RoleController } from './role/role.controller';
+import { RoleModule } from './role/role.module';
+
 @Module({
-  imports: [SharedModule, AuthModule, LanguagesModule],
-  controllers: [AppController],
+  imports: [
+    SharedModule,
+    AuthModule,
+    LanguagesModule,
+    PermissionsModule,
+    RoleModule,
+  ],
+  controllers: [AppController, RoleController],
   providers: [
     AppService,
     { provide: 'APP_PIPE', useClass: ZodValidationPipe },

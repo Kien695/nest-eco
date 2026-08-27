@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  HttpException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import envConfig from '../config';
@@ -43,38 +44,45 @@ export class AuthenticationGuard implements CanActivate {
       (authType) => this.authTypeGuardMap[authType],
     );
 
-    let error = new UnauthorizedException();
-
     if (authTypeValue.options.condition === conditionGuard.Or) {
-      for (const instance of guards) {
-        const canActivate = await Promise.resolve(
-          instance.canActivate(context),
-        ).catch((err) => {
-          error = err;
-          return false;
-        });
+      return this.handleOrCondition(guards, context);
+    } else {
+      return this.handleAndCondition(guards, context);
+    }
+  }
+  private async handleOrCondition(
+    guards: CanActivate[],
+    context: ExecutionContext,
+  ) {
+    let lastError: any = null;
 
-        if (canActivate) {
+    for (const guard of guards) {
+      try {
+        if (await guard.canActivate(context)) {
           return true;
         }
+      } catch (error) {
+        lastError = error;
       }
-
-      throw error;
-    } else {
-      for (const instance of guards) {
-        const canActivate = await Promise.resolve(
-          instance.canActivate(context),
-        ).catch((err) => {
-          error = err;
-          return false;
-        });
-
-        if (!canActivate) {
-          throw new UnauthorizedException();
-        }
-      }
-
-      return true;
     }
+
+    if (lastError instanceof HttpException) {
+      throw lastError;
+    }
+
+    throw new UnauthorizedException();
+  }
+
+  private async handleAndCondition(
+    guards: CanActivate[],
+    context: ExecutionContext,
+  ) {
+    for (const guard of guards) {
+      if (!(await guard.canActivate(context))) {
+        throw new UnauthorizedException();
+      }
+    }
+
+    return true;
   }
 }
