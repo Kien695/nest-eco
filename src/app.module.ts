@@ -10,6 +10,7 @@ import { LanguagesModule } from './languages/languages.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RoleController } from './role/role.controller';
 import { RoleModule } from './role/role.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RoleModule } from './role/role.module';
     LanguagesModule,
     PermissionsModule,
     RoleModule,
+    ProfileModule,
   ],
   controllers: [AppController, RoleController],
   providers: [
