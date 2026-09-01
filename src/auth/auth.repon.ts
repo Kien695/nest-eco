@@ -5,12 +5,12 @@ import {
   loginOauthBodyType,
   refreshTokenType,
   registerBodyType,
-  roleType,
   verificationCodeType,
 } from './auth.model';
 import { UserType } from 'src/shared/models/shared-user.model';
 import { TypeOfVerificationCodeType } from 'src/shared/constants/auth.constant';
 import { AuthProvider, Prisma, User } from '@prisma/client';
+import { RoleType } from 'src/shared/models/shared-role';
 
 @Injectable()
 export class AuthRepository {
@@ -94,7 +94,7 @@ export class AuthRepository {
 
   async findUniqueUserIncludeRole(
     uniqueObject: { email: string } | { id: number },
-  ): Promise<(UserType & { role: roleType }) | null> {
+  ): Promise<(UserType & { role: RoleType }) | null> {
     return this.prismaService.user.findUnique({
       where: uniqueObject,
       include: {
@@ -105,7 +105,7 @@ export class AuthRepository {
   async findUniqueRefreshTokenIcludeUserRole(uniqueObject: {
     token: string;
   }): Promise<
-    (refreshTokenType & { user: UserType & { role: roleType } }) | null
+    (refreshTokenType & { user: UserType & { role: RoleType } }) | null
   > {
     return this.prismaService.refreshToken.findUnique({
       where: uniqueObject,

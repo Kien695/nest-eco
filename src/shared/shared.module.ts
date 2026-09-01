@@ -10,12 +10,14 @@ import { AuthenticationGuard } from './guards/auth.guard';
 import { SharedUserRepostory } from './repositories/shared-user.repo';
 import { EmailService } from './services/email.services';
 import { TwoFactorAuthService } from './services/2fa.services';
+import { SharedRoleRepository } from './repositories/shared-role.repo';
 
 const sharedServices = [
   PrismaService,
   HashingService,
   TokenService,
   SharedUserRepostory,
+  SharedRoleRepository,
   EmailService,
   TwoFactorAuthService,
 ];

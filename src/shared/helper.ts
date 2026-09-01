@@ -22,3 +22,12 @@ export function isUniqueNotFoundError(
 export const generateOTP = (): string => {
   return randomInt(100000, 1000000).toString();
 };
+
+export function isForeignKeyConstrainPrismaError(
+  error: unknown,
+): error is Prisma.PrismaClientKnownRequestError {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2003'
+  );
+}

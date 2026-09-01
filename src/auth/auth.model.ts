@@ -125,21 +125,6 @@ export const DeviceShema = z.object({
 });
 export type deviceType = z.infer<typeof DeviceShema>;
 
-//role
-export const roleSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  description: z.string(),
-  isActive: z.boolean(),
-  createdById: z.number().nullable(),
-
-  updatedById: z.number().nullable(),
-  deletedAt: z.date().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-export type roleType = z.infer<typeof roleSchema>;
-
 export const loginOauthBodySchema = UserSchema.pick({
   email: true,
   name: true,

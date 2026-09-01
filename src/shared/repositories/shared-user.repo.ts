@@ -9,7 +9,7 @@ type UserIncludeRolePermissionType = UserType & {
   role: RoleType & { permissions: PermissionType[] };
 };
 
-type WhereUniqueUserType =
+export type WhereUniqueUserType =
   | { id: number; [key: string]: any }
   | { email: string; [key: string]: any };
 

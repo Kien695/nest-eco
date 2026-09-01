@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { HashingService } from 'src/shared/services/hasing.service';
 
-import { RolesService } from './roles.service';
 import {
   generateOTP,
   isUniqueContraintError,
@@ -46,13 +45,14 @@ import {
 } from './auth.error';
 import { UseZodGuard } from 'node_modules/nestjs-zod/dist/index.mjs';
 import { TwoFactorAuthService } from 'src/shared/services/2fa.services';
+import { SharedRoleRepository } from 'src/shared/repositories/shared-role.repo';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly hashingService: HashingService,
     private readonly authRepostory: AuthRepository,
-    private readonly rolseService: RolesService,
+    private readonly rolseService: SharedRoleRepository,
     private readonly sharedUserRepo: SharedUserRepostory,
     private readonly emailService: EmailService,
     private readonly tokenService: TokenService,

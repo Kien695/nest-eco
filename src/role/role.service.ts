@@ -70,9 +70,6 @@ export class RoleService {
       if (isUniqueContraintError(error)) {
         throw RoleAlreadyExistException;
       }
-      if (error instanceof Error) {
-        throw new BadRequestException(error.message);
-      }
       throw error;
     }
   }

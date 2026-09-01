@@ -77,5 +77,6 @@ export class AccessTokenGuard implements CanActivate {
     if (!canAccess) {
       throw new ForbiddenException();
     }
+    request.role_permission = role;
   }
 }

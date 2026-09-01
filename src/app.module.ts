@@ -11,6 +11,7 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { RoleController } from './role/role.controller';
 import { RoleModule } from './role/role.module';
 import { ProfileModule } from './profile/profile.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ProfileModule } from './profile/profile.module';
     PermissionsModule,
     RoleModule,
     ProfileModule,
+    UserModule,
   ],
   controllers: [AppController, RoleController],
   providers: [
