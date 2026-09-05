@@ -12,6 +12,7 @@ import { RoleController } from './role/role.controller';
 import { RoleModule } from './role/role.module';
 import { ProfileModule } from './profile/profile.module';
 import { UserModule } from './user/user.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UserModule } from './user/user.module';
     RoleModule,
     ProfileModule,
     UserModule,
+    MediaModule,
   ],
   controllers: [AppController, RoleController],
   providers: [

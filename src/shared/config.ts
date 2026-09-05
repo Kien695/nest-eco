@@ -23,6 +23,11 @@ const configSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string(),
   GOOGLE_REDIRECT_URL: z.string(),
   APP_NAME: z.string(),
+  PREFIX_STATIC_ENDPOINT: z.string(),
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  CLOUDINARY_FOLDER: z.string().default('eco-nest'),
 });
 
 const configServer = configSchema.safeParse(process.env);
