@@ -7,10 +7,10 @@ export class SharedRoleRepository {
   private clientRoleId: number | null = null;
   private adminRoleId: number | null = null;
   constructor(private readonly prismaService: PrismaService) {}
-  private async GetRole(roleNmame: string) {
+  private async GetRole(name: string) {
     const role = await this.prismaService.role.findFirstOrThrow({
       where: {
-        name: roleName.Client,
+        name,
       },
     });
     return role;

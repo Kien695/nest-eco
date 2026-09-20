@@ -13,6 +13,12 @@ import { RoleModule } from './role/role.module';
 import { ProfileModule } from './profile/profile.module';
 import { UserModule } from './user/user.module';
 import { MediaModule } from './media/media.module';
+import { BrandModule } from './brand/brand.module';
+import { BrandTranslationModule } from './brand/brand_translation/brand_translation.module';
+import { CategoryModule } from './category/category.module';
+import { CategoryTranslationModule } from './category/category_translation/category_translation.module';
+import { ProductTranslationModule } from './product/product_translation/product_translation.module';
+import { ProductModule } from './product/product.module';
 
 @Module({
   imports: [
@@ -24,6 +30,12 @@ import { MediaModule } from './media/media.module';
     ProfileModule,
     UserModule,
     MediaModule,
+    BrandModule,
+    BrandTranslationModule,
+    CategoryModule,
+    CategoryTranslationModule,
+    ProductModule,
+    ProductTranslationModule,
   ],
   controllers: [AppController, RoleController],
   providers: [

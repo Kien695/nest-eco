@@ -33,6 +33,7 @@
     "cloudinary": "^2.11.0",
     "dotenv": "^17.4.2",
     "multer": "^2.3.0",
+    "nestjs-i18n": "^10.8.5",
     "nestjs-zod": "^5.4.0",
     "otpauth": "^9.5.1",
     "passport": "^0.7.0",

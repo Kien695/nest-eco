@@ -189,8 +189,10 @@ export class AuthService {
           throw OTPExpiredException;
         }
 
-        // (Tùy chọn) Nên xóa mã OTP này sau khi dùng xong để tránh sử dụng lại
-        // await this.authRepostory.deleteVerificationCode(verificationCode.id);
+        //(Tùy chọn) Nên xóa mã OTP này sau khi dùng xong để tránh sử dụng lại
+        await this.authRepostory.deleteVerificationCode({
+          id: verificationCode.id,
+        });
       }
     }
 
