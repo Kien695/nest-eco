@@ -1,9 +1,15 @@
 import z from 'zod';
-import { SKUSchema, UpsertSKUBodySchema } from './sku.model';
+
 import { ProductTranslationSchema } from './product_translation/product_translation.model';
 import { BrandIncludeTranslationSchema } from 'src/brand/brand.model';
 import { CategoryIncludeTranslationSchema } from 'src/category/category.model';
 import { OrderBy, SortBy } from 'src/shared/constants/other.constant';
+import {
+  ProductsSchema,
+  VariantsSchema,
+} from 'src/shared/models/shared-product.model';
+import { SKUSchema } from 'src/shared/models/shared-sku.model';
+import { UpsertSKUBodySchema } from './sku.model';
 
 function generateSKUs(variants: VariantsType) {
   function getCombinations(arrays: string[][]): string[] {
@@ -28,57 +34,6 @@ function generateSKUs(variants: VariantsType) {
     image: '',
   }));
 }
-export const VariantSchema = z.object({
-  value: z.string().trim(),
-  options: z.array(z.string().trim()),
-});
-export const VariantsSchema = z
-  .array(VariantSchema)
-  .superRefine((variants, ctx) => {
-    for (let i = 0; i < variants.length; i++) {
-      const variant = variants[i];
-      const isDuplicateVariant =
-        variants.findIndex(
-          (v) => v.value.toLowerCase() === variant.value.toLowerCase(),
-        ) !== i;
-
-      if (isDuplicateVariant) {
-        return ctx.addIssue({
-          code: 'custom',
-          message: `Giá trị ${variant.value} đã tồn tại trong danh sách variants. Vui lòng kiểm tra lại!`,
-          path: ['variants'],
-        });
-      }
-      const isDuplicateOption = variant.options.some((option, index) => {
-        const existingOption =
-          variant.options.findIndex(
-            (o) => o.toLowerCase() === option.toLowerCase(),
-          ) !== index;
-        return existingOption;
-      });
-      if (isDuplicateOption) {
-        return ctx.addIssue({
-          code: 'custom',
-          message: `Variant ${variant.value} chứa các option trùng tên với nhau. Vui lòng kiểm tra lại!`,
-          path: ['variants'],
-        });
-      }
-    }
-  });
-export const ProductsSchema = z.object({
-  id: z.number(),
-  publishedAt: z.coerce.date().nullable(),
-  name: z.string().trim().max(500),
-  basePrice: z.number().min(0),
-  virtualPrice: z.number().min(0),
-  brandId: z.number().positive(),
-  images: z.array(z.string()),
-  variants: VariantsSchema,
-  createdById: z.number().nullable(),
-  updatedById: z.number().nullable(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
 
 // dành cho client
 export const GetProductsQuerySchema = z.object({
@@ -105,7 +60,9 @@ export const GetProductsQuerySchema = z.object({
   maxPrice: z.coerce.number().positive().optional(),
   createdById: z.coerce.number().int().positive().optional(),
   orderBy: z.enum([OrderBy.Asc, OrderBy.Desc]).default(OrderBy.Desc),
-  sortBy: z.enum([SortBy.CreatedAt, SortBy.Price, SortBy.Sale]).default(SortBy.CreatedAt),
+  sortBy: z
+    .enum([SortBy.CreatedAt, SortBy.Price, SortBy.Sale])
+    .default(SortBy.CreatedAt),
 });
 
 //dành cho admin và seller

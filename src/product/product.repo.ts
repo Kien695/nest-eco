@@ -6,7 +6,6 @@ import {
   GetProductsResType,
   ProductType,
   UpdateProductBodyType,
-  VariantsSchema,
 } from './product.model';
 import { Prisma } from '@prisma/client';
 import {
@@ -15,6 +14,7 @@ import {
   SortBy,
   SortByType,
 } from 'src/shared/constants/other.constant';
+import { VariantsSchema } from 'src/shared/models/shared-product.model';
 
 @Injectable()
 export class ProductRepo {

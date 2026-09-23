@@ -13,7 +13,10 @@ const sellerModule = [
   'MANAGE-PRODUCT',
   'PRODUCT-TRANSLATION',
   'PROFILE',
+  'CART',
+  'ORDERS',
 ];
+const clientModule = ['AUTH', 'MEDIA', 'PROFILE', 'CART', 'ORDERS'];
 const prisma = new PrismaService();
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -111,10 +114,13 @@ async function bootstrap() {
   const sellerPermissionIds = updatedPermissionInDb
     .filter((item) => sellerModule.includes(item.module))
     .map((item) => ({ id: item.id }));
-
+  const clientPermissionIds = updatedPermissionInDb
+    .filter((item) => clientModule.includes(item.module))
+    .map((item) => ({ id: item.id }));
   await Promise.all([
     updateRole(adminPermissionIds, roleName.Admin),
     updateRole(sellerPermissionIds, roleName.Seller),
+    updateRole(clientPermissionIds, roleName.Client),
   ]);
 
   process.exit(0);
