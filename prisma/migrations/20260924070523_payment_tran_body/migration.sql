@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "PaymentTransaction" ALTER COLUMN "body" DROP NOT NULL,
+ALTER COLUMN "body" SET DATA TYPE TEXT;

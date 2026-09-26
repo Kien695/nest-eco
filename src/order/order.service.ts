@@ -6,6 +6,7 @@ import {
   GetOrderListQueryType,
   GetOrderListResType,
 } from './order.model';
+import { OrderProducer } from './order.producer';
 
 @Injectable()
 export class OrderService {
@@ -18,7 +19,9 @@ export class OrderService {
     return this.orderRepo.list(userId, query);
   }
   async create(userId: number, body: CreateOrderBodyType) {
-    return this.orderRepo.create(userId, body);
+    const result = await this.orderRepo.create(userId, body);
+
+    return result;
   }
   cancel(userId: number, orderId: number) {
     return this.orderRepo.cancel(userId, orderId);

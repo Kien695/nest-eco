@@ -394,13 +394,15 @@ model Order {
   items    ProductSKUSnapshot[]
   products Product[]
 
-  receiver    Json  @db.JsonB
+  receiver    Json    @db.JsonB
   shopId      Int
-  shop        User  @relation("Shop", fields: [shopId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  shop        User    @relation("Shop", fields: [shopId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  paymentId   Int
+  payment     Payment @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdById Int?
-  createdBy   User? @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  createdBy   User?   @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: NoAction)
   updatedById Int?
-  updatedBy   User? @relation("OrderUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  updatedBy   User?   @relation("OrderUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -408,6 +410,14 @@ model Order {
 
   @@index([deletedAt])
   @@index([status, deletedAt])
+}
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  orders    Order[]
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
 
 model Review {
@@ -424,20 +434,23 @@ model Review {
 }
 
 model PaymentTransaction {
-  id                 Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
+
   gateway            String   @db.VarChar(100)
-  transactionDate    DateTime @default(now())
-  accountNumber      String   @db.VarChar(100)
+  transactionDate    DateTime
+  accountNumber      String?  @db.VarChar(100)
   subAccount         String?  @db.VarChar(250)
+  code               String?  @db.VarChar(250)
   amountIn           Int      @default(0)
   amountOut          Int      @default(0)
   accumulated        Int      @default(0)
-  code               String?  @db.VarChar(250)
   transactionContent String?  @db.Text
   referenceNumber    String?  @db.VarChar(255)
   body               String?  @db.Text
+  createdAt          DateTime @default(now())
 
-  createdAt DateTime @default(now())
+  @@index([code])
+  @@index([accountNumber, transactionDate])
 }
 
 model Message {
@@ -466,6 +479,12 @@ enum VerificationCodeType {
   FORGOT_PASSWORD
   LOGIN
   DISABLE_2FA
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
 
 enum UserStatus {

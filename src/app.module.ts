@@ -21,9 +21,20 @@ import { ProductTranslationModule } from './product/product_translation/product_
 import { ProductModule } from './product/product.module';
 import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
-
+import { PaymentModule } from './payment/payment.module';
+import { BullModule } from '@nestjs/bullmq';
+import envConfig from './shared/config';
+import { PaymentConsumer } from './queue/payment.consumer';
+import { WebsocketModule } from './websockets/websocket.module';
 @Module({
   imports: [
+    BullModule.forRoot({
+      connection: {
+        host: envConfig.REDIS_HOST,
+        port: envConfig.REDIS_PORT,
+        password: envConfig.REDIS_PASSWORD,
+      },
+    }),
     SharedModule,
     AuthModule,
     LanguagesModule,
@@ -40,12 +51,15 @@ import { OrderModule } from './order/order.module';
     ProductTranslationModule,
     CartModule,
     OrderModule,
+    PaymentModule,
+    WebsocketModule,
   ],
   controllers: [AppController, RoleController],
   providers: [
     AppService,
     { provide: 'APP_PIPE', useClass: ZodValidationPipe },
     { provide: 'APP_INTERCEPTOR', useClass: ZodSerializerInterceptor },
+    PaymentConsumer,
   ],
 })
 export class AppModule {}

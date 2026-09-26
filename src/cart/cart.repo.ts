@@ -54,10 +54,8 @@ export class CartRepo {
     if (!sku) {
       throw NotFoundSKUException;
     }
-    if (!cartItems) {
-      throw NotFoundCartItemException;
-    }
-    if (isCreate && quantity + cartItems.quantity > sku.stock) {
+
+    if (cartItems && isCreate && quantity + cartItems.quantity > sku.stock) {
       throw IsValidQuantityException;
     }
     if (sku.stock < 1 || sku.stock < quantity) {

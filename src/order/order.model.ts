@@ -94,6 +94,10 @@ export const CreateOrderResSchema = z.object({ data: z.array(OrderSchema) });
 
 export const CancelOrderResSchema = OrderSchema;
 
+export const OrderIncludeProductSKUSnapshotSchema = OrderSchema.extend({
+  items: z.array(ProductSKUSnapshotSchema),
+});
+
 export const GetOrderParamsSchema = z
   .object({
     orderId: z.coerce.number().int().positive(),
@@ -107,3 +111,6 @@ export type GetOrderParamsType = z.infer<typeof GetOrderParamsSchema>;
 export type CreateOrderBodyType = z.infer<typeof CreateOrderBodySchema>;
 export type CreateOrderResType = z.infer<typeof CreateOrderResSchema>;
 export type CancelOrderResType = z.infer<typeof CancelOrderResSchema>;
+export type OrderIncludeProductSKUSnapshotType = z.infer<
+  typeof OrderIncludeProductSKUSnapshotSchema
+>;

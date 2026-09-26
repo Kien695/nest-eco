@@ -8,11 +8,13 @@ import { Observable } from 'rxjs';
 import envConfig from '../config';
 
 @Injectable()
-export class APIGuard implements CanActivate {
+export class PaymentAPIKeyGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const xAPIKey = request.headers['x-api-key'];
-    if (xAPIKey !== envConfig.SECRET_API_KEY) {
+    // Node normalizes incoming header names to lowercase.
+    const authorization = request.headers.authorization;
+    const xAPIKey = authorization?.split(' ')[1];
+    if (xAPIKey !== envConfig.PAYMENT_API_KEY) {
       throw new UnauthorizedException();
     }
     return true;

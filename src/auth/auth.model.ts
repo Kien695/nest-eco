@@ -67,7 +67,9 @@ export const LoginBodySchema = z
   })
   .strict()
   .superRefine(({ totpCode, code }, ctx) => {
-    if ((totpCode !== undefined) === (code !== undefined)) {
+    // A normal account does not need a second factor. Reject only the
+    // ambiguous case; AuthService requires one of these when 2FA is enabled.
+    if (totpCode !== undefined && code !== undefined) {
       (ctx.addIssue({
         path: ['totpCode'],
         message: AuthErrorMessage.AuthOTPOrCode,

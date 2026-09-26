@@ -16,7 +16,7 @@ const configSchema = z.object({
   ACCESS_TOKEN_EXPIRED: z.string(),
   REFRESH_TOKEN_SECRET: z.string(),
   REFRESH_TOKEN_EXPIRED: z.string(),
-  SECRET_API_KEY: z.string(),
+  PAYMENT_API_KEY: z.string(),
   OTP_EXPIRES_IN: z.string(),
   RESEND_API_KEY: z.string(),
   GOOGLE_CLIENT_ID: z.string(),
@@ -28,6 +28,9 @@ const configSchema = z.object({
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
   CLOUDINARY_FOLDER: z.string().default('eco-nest'),
+  REDIS_HOST: z.string(),
+  REDIS_PORT: z.string(),
+  REDIS_PASSWORD: z.string(),
 });
 
 const configServer = configSchema.safeParse(process.env);

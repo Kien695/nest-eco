@@ -24,10 +24,15 @@ import {
   SKUNotBelongToShopException,
 } from './order.error';
 import { isUniqueNotFoundError } from 'src/shared/helper';
+import { PaymentStatus } from 'src/shared/constants/payment.contstant';
+import { OrderProducer } from './order.producer';
 
 @Injectable()
 export class OrderRepo {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private orderProducer: OrderProducer,
+  ) {}
   async list(
     userId: number,
     query: GetOrderListQueryType,
@@ -63,7 +68,7 @@ export class OrderRepo {
   async create(
     userId: number,
     body: CreateOrderBodyType,
-  ): Promise<CreateOrderResType> {
+  ): Promise<{ paymentId: number; orders: CreateOrderResType['data'] }> {
     const allBodyCartItemIds = body.map((item) => item.cartItemIds).flat();
     const cartItems = await this.prismaService.cartItem.findMany({
       where: {
@@ -85,9 +90,9 @@ export class OrderRepo {
       throw NotFoundCartItemException;
     }
     //2. Ktra số lượng mua có lớn hơn số lượng tồn
-    const isOutOfStock = cartItems.some((item) => {
-      item.sku.stock < item.quantity;
-    });
+    const isOutOfStock = cartItems.some(
+      (item) => item.sku.stock < item.quantity,
+    );
     if (isOutOfStock) {
       throw OutOfStockSKUException;
     } //3. Ktra tất cả sản phẩm mua có sp nào bị xóa hay ẩn k
@@ -113,70 +118,101 @@ export class OrderRepo {
         return item.shopId === cartItem.sku.createdById;
       });
     });
-    if (isValidShop) {
+    if (!isValidShop) {
       throw SKUNotBelongToShopException;
     }
 
     //5. tạo order
-    const orders = await this.prismaService.$transaction(async (tx) => {
-      const orders = await Promise.all(
-        body.map((item) =>
-          tx.order.create({
-            data: {
-              userId,
-              status: OrderStatus.PENDING_PAYMENT,
-              receiver: item.receiver,
-              createdById: userId,
-              shopId: item.shopId,
-              items: {
-                create: item.cartItemIds.map((cartItemId) => {
-                  const cartItem = cartItemMap.get(cartItemId)!;
-                  return {
-                    productName: cartItem.sku.product.name,
-                    skuPrice: cartItem.sku.price,
-                    images: cartItem.sku.image,
-                    skuId: cartItem.sku.id,
-                    skuValue: cartItem.sku.value,
-                    quantity: cartItem.quantity,
-                    productId: cartItem.sku.product.id,
-                    productTranslations:
-                      cartItem.sku.product.productTranslations.map(
-                        (translation) => {
-                          return {
-                            id: translation.id,
-                            name: translation.name,
-                            description: translation.description,
-                            languageId: translation.languageId,
-                          };
-                        },
-                      ),
-                  };
-                }),
+    const [paymentId, orders] = await this.prismaService.$transaction(
+      async (tx) => {
+        const payment = await tx.payment.create({
+          data: { status: PaymentStatus.PENDING },
+        });
+        const orders$ = Promise.all(
+          body.map((item) =>
+            tx.order.create({
+              data: {
+                userId,
+                status: OrderStatus.PENDING_PAYMENT,
+                receiver: item.receiver,
+                createdById: userId,
+                shopId: item.shopId,
+                paymentId: payment.id,
+                items: {
+                  create: item.cartItemIds.map((cartItemId) => {
+                    const cartItem = cartItemMap.get(cartItemId)!;
+                    return {
+                      productName: cartItem.sku.product.name,
+                      skuPrice: cartItem.sku.price,
+                      images: cartItem.sku.image,
+                      skuId: cartItem.sku.id,
+                      skuValue: cartItem.sku.value,
+                      quantity: cartItem.quantity,
+                      productId: cartItem.sku.product.id,
+                      productTranslations:
+                        cartItem.sku.product.productTranslations.map(
+                          (translation) => {
+                            return {
+                              id: translation.id,
+                              name: translation.name,
+                              description: translation.description,
+                              languageId: translation.languageId,
+                            };
+                          },
+                        ),
+                    };
+                  }),
+                },
+                products: {
+                  connect: item.cartItemIds.map((cartItemId) => {
+                    const cartItem = cartItemMap.get(cartItemId)!;
+                    return {
+                      id: cartItem.sku.product.id,
+                    };
+                  }),
+                },
               },
-              products: {
-                connect: item.cartItemIds.map((cartItemId) => {
-                  const cartItem = cartItemMap.get(cartItemId)!;
-                  return {
-                    id: cartItem.sku.product.id,
-                  };
-                }),
-              },
+            }),
+          ),
+        );
+        const cartItem$ = tx.cartItem.deleteMany({
+          where: {
+            id: {
+              in: allBodyCartItemIds,
             },
-          }),
-        ),
-      );
-      await tx.cartItem.deleteMany({
-        where: {
-          id: {
-            in: allBodyCartItemIds,
           },
-        },
-      });
-      return orders;
-    });
-    return CreateOrderResSchema.parse({
-      data: orders,
-    });
+        });
+
+        const sku$ = Promise.all(
+          cartItems.map((item) => {
+            return tx.sKU.update({
+              where: {
+                id: item.sku.id,
+              },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            });
+          }),
+        );
+        const addCancelPaymentJob$ = this.orderProducer.cancelPayment(
+          payment.id,
+        );
+        const [orders] = await Promise.all([
+          orders$,
+          cartItem$,
+          sku$,
+          addCancelPaymentJob$,
+        ]);
+        return [payment.id, orders] as const;
+      },
+    );
+    return {
+      paymentId,
+      orders: CreateOrderResSchema.parse({ data: orders }).data,
+    };
   }
 
   async detail(

@@ -37,3 +37,7 @@ export const generateRandomFileName = (fileName: string) => {
   const ext = path.extname(fileName);
   return `${v4uuid()}${ext}`;
 };
+
+export const generateCancelPaymentJobId = (paymentId: number) => {
+  return `paymentId - ${paymentId}`;
+};

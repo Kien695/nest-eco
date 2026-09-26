@@ -4,13 +4,14 @@ import { HashingService } from './services/hasing.service';
 import { TokenService } from './services/token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { AccessTokenGuard } from './guards/accessToken.guard';
-import { APIGuard } from './guards/api_key.guards';
+import { PaymentAPIKeyGuard } from './guards/payment_api_key.guards';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthenticationGuard } from './guards/auth.guard';
 import { SharedUserRepostory } from './repositories/shared-user.repo';
 import { EmailService } from './services/email.services';
 import { TwoFactorAuthService } from './services/2fa.services';
 import { SharedRoleRepository } from './repositories/shared-role.repo';
+import { SharedPaymentRepository } from './repositories/shared-payment.repo';
 
 const sharedServices = [
   PrismaService,
@@ -20,13 +21,14 @@ const sharedServices = [
   SharedRoleRepository,
   EmailService,
   TwoFactorAuthService,
+  SharedPaymentRepository,
 ];
 @Global()
 @Module({
   providers: [
     ...sharedServices,
     AccessTokenGuard,
-    APIGuard,
+    PaymentAPIKeyGuard,
     {
       provide: APP_GUARD,
       useClass: AuthenticationGuard,
